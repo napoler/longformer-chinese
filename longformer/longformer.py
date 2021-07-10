@@ -6,10 +6,12 @@ import torch.nn.functional as F
 from longformer.diagonaled_mm_tvm import diagonaled_mm as diagonaled_mm_tvm, mask_invalid_locations
 from longformer.sliding_chunks import sliding_chunks_matmul_qk, sliding_chunks_matmul_pv
 from longformer.sliding_chunks import sliding_chunks_no_overlap_matmul_qk, sliding_chunks_no_overlap_matmul_pv
-from transformers.modeling_roberta import RobertaConfig, RobertaModel, RobertaForMaskedLM
-from transformers.modeling_bert import BertConfig, BertModel, BertForMaskedLM
+# from transformers.modeling_roberta import RobertaConfig, RobertaModel, RobertaForMaskedLM
+# from transformers.modeling_bert import BertConfig, BertModel, BertForMaskedLM
+import pytorch_lightning as pl
 
-
+from transformers import RobertaConfig, RobertaModel, RobertaForMaskedLM, BertConfig, BertModel, BertForMaskedLM,BertTokenizer, AdamW
+from longformer.sliding_chunks import pad_to_window_size
 class Longformer(BertModel):
     def __init__(self, config):
         super(Longformer, self).__init__(config)
@@ -95,8 +97,12 @@ class LongformerSelfAttention(nn.Module):
         head_mask=None,
         encoder_hidden_states=None,
         encoder_attention_mask=None,
+        past_key_value=None,
         output_attentions=False,
     ):
+        
+        
+
         '''
         The `attention_mask` is changed in `BertModel.forward` from 0, 1, 2 to
             -ve: no attention
@@ -271,4 +277,96 @@ class LongformerSelfAttention(nn.Module):
                 # which is the attention weights of every token attending to its neighbours
                 attn_weights = attn_weights.permute(0, 2, 1, 3)
         outputs = (context_layer, attn_weights) if output_attentions else (context_layer,)
+        # print("LongformerSelfAttention",outputs)
         return outputs
+    
+class LongformerEmbedding(pl.LightningModule):
+    """
+    定義自動編碼
+     'tvm', 'sliding_chunks', 'n2', 'sliding_chunks_no_overlap'
+    
+    """
+
+    def __init__(self, checkpoint_path,config_path=None,tokenizer_path=None,attention_mode="sliding_chunks",layers=[],cls=True,**kwargs):
+        '''
+        
+        
+        layers 需要保存的層
+        '''
+        super().__init__()
+        # if isinstance(init_args, dict):
+        #     # for loading the checkpoint, pl passes a dict (hparams are saved as dict)
+        #     init_args = Namespace(**init_args)
+        # config_path = init_args.config_path or init_args.model_dir
+        # checkpoint_path = init_args.checkpoint_path or init_args.model_dir
+        # logger.info(f'loading model from config: {config_path}, checkpoint: {checkpoint_path}')
+        self.save_hyperparameters()
+        if self.hparams.config_path==None:
+            self.hparams.config_path=self.hparams.checkpoint_path
+        if self.hparams.tokenizer_path==None:
+            self.hparams.tokenizer_path=self.hparams.checkpoint_path
+
+
+        config = LongformerConfig.from_pretrained( self.hparams.config_path)
+        config.attention_mode = self.hparams.attention_mode
+        # logger.info(f'attention mode set to {config.attention_mode}')
+        self.model_config = config
+        
+        # self.model = Longformer.from_pretrained(self.hparams.checkpoint_path, config=config)
+        
+        if len(self.hparams.layers)==0:
+            self.model = LongformerForMaskedLM.from_pretrained(self.hparams.checkpoint_path, config=config)
+        else:
+            
+            # 獲取原始模型的某些層
+            
+            self.model = LongformerForMaskedLM.from_pretrained(self.hparams.checkpoint_path, config=config)
+            # for layer in self.hparams.layers:
+            #     del self.model.bert.encoder.layer[layer]
+            # print(len(self.model.bert.encoder.layer))
+            # layersFull=len(self.model.bert.encoder.layer)
+            
+            
+            bertLayer=nn.ModuleList([])
+            for i in self.hparams.layers:
+                # print(i)
+                # print(self.model.bert.encoder.layer[i])
+                bertLayer.append(self.model.bert.encoder.layer[i])
+            self.model.bert.encoder.layer =bertLayer
+
+        # if self.hparams.cls:
+        #     pass
+        # else:
+        #     print("cls",(self.model.cls))
+        #     try:
+                
+        #         del self.model.cls
+        #     except:
+        #         pass
+        # print(self.model)
+        self.tokenizer = BertTokenizer.from_pretrained(self.hparams.tokenizer_path)
+        self.tokenizer.model_max_length = self.model.config.max_position_embeddings
+        # self.hparams = init_args
+        self.hparams.seqlen = self.model.config.max_position_embeddings
+        # self.classifier = nn.Linear(config.hidden_size, init_args.num_labels)
+
+    def forward(self, input_ids, attention_mask, token_type_ids=None):
+        input_ids, attention_mask = pad_to_window_size(
+            input_ids, attention_mask, self.model_config.attention_window[0], self.tokenizer.pad_token_id)
+
+        attention_mask[:, 0] = 2  # global attention for the first token
+        #use Bert inner Pooler
+        # print("input_ids",input_ids.size())
+        # print("attention_mask",attention_mask.size())
+        output = self.model(input_ids, attention_mask=attention_mask)
+        # pool the entire sequence into one vector (CLS token)
+        # output = output[:, 0, :]
+        # logits = self.classifier(output)
+
+        # loss = None
+        # if labels is not None:
+        #     loss_fct = CrossEntropyLoss()
+
+        #     loss = loss_fct(logits.view(-1, self.hparams.num_labels), labels.view(-1))
+
+        return output

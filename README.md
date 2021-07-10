@@ -14,6 +14,40 @@ model = Longformer.from_pretrained('schen/longformer-chinese-base-4096', config=
 ```
 
 
+
+
+#### 使用嵌入
+
+
+
+```python
+from longformer.longformer import Longformer, LongformerConfig,LongformerEmbedding
+
+# model=LongformerEmbedding('schen/longformer-chinese-base-4096',attention_mode='n2')
+
+model=LongformerEmbedding('schen/longformer-chinese-base-4096')
+
+# inputs = model.tokenizer("Hello, my dog is cute", return_tensors="pt",padding="max_length",truncation=True,max_length=model.tokenizer.model_max_length)
+inputs = model.tokenizer("Hello, my dog is cute", return_tensors="pt",padding="max_length",truncation=True,max_length=40)
+
+outputs = model(**inputs)
+print("outputs",outputs)
+
+print("outputs",outputs.keys())
+
+print("outputs",outputs['last_hidden_state'].size())
+
+```
+
+
+
+
+
+
+
+
+
+
  使用`schen/longformer-chinese-base-4096`会自动从transformers下载预训练模型，也可以自行下载后替换成所在目录：
  https://huggingface.co/schen/longformer-chinese-base-4096
 
