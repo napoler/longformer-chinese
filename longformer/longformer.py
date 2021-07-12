@@ -335,10 +335,8 @@ class LongformerEmbedding(pl.LightningModule):
                     # print(self.model.bert.encoder.layer[i])
                     bertLayer.append(self.model.bert.encoder.layer[i])
                 self.model.bert.encoder.layer =bertLayer
-          else:
+        else:
             BaseLongformer=Longformer(config=config)
-          
-            
             if len(self.hparams.layers)==0:
                 self.model = BaseLongformer.from_pretrained(self.hparams.checkpoint_path, config=config)
             else:
