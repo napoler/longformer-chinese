@@ -315,9 +315,9 @@ class LongformerEmbedding(pl.LightningModule):
         # self.model = Longformer.from_pretrained(self.hparams.checkpoint_path, config=config)
         
         if lm:
-            BaseLongformer=LongformerForMaskedLM
+            BaseLongformer=LongformerForMaskedLM()
         else:
-            BaseLongformer=Longformer
+            BaseLongformer=Longformer()
         
         if len(self.hparams.layers)==0:
             self.model = BaseLongformer.from_pretrained(self.hparams.checkpoint_path, config=config)
