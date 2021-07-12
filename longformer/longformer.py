@@ -287,7 +287,7 @@ class LongformerEmbedding(pl.LightningModule):
     
     """
 
-    def __init__(self, checkpoint_path,config_path=None,tokenizer_path=None,attention_mode="sliding_chunks",layers=[],cls=True,**kwargs):
+    def __init__(self, checkpoint_path,config_path=None,tokenizer_path=None,attention_mode="sliding_chunks",layers=[],lm=False,cls=True,**kwargs):
         '''
         
         
@@ -314,13 +314,18 @@ class LongformerEmbedding(pl.LightningModule):
         
         # self.model = Longformer.from_pretrained(self.hparams.checkpoint_path, config=config)
         
+        if lm:
+            BaseLongformer=LongformerForMaskedLM
+        else:
+            BaseLongformer=Longformer
+        
         if len(self.hparams.layers)==0:
-            self.model = LongformerForMaskedLM.from_pretrained(self.hparams.checkpoint_path, config=config)
+            self.model = BaseLongformer.from_pretrained(self.hparams.checkpoint_path, config=config)
         else:
             
             # 獲取原始模型的某些層
             
-            self.model = LongformerForMaskedLM.from_pretrained(self.hparams.checkpoint_path, config=config)
+            self.model = BaseLongformer.from_pretrained(self.hparams.checkpoint_path, config=config)
             # for layer in self.hparams.layers:
             #     del self.model.bert.encoder.layer[layer]
             # print(len(self.model.bert.encoder.layer))
