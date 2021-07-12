@@ -316,28 +316,48 @@ class LongformerEmbedding(pl.LightningModule):
         
         if lm:
             BaseLongformer=LongformerForMaskedLM(config=config)
-        else:
+            if len(self.hparams.layers)==0:
+                self.model = BaseLongformer.from_pretrained(self.hparams.checkpoint_path, config=config)
+            else:
+
+                # 獲取原始模型的某些層
+
+                self.model = BaseLongformer.from_pretrained(self.hparams.checkpoint_path, config=config)
+                # for layer in self.hparams.layers:
+                #     del self.model.bert.encoder.layer[layer]
+                # print(len(self.model.bert.encoder.layer))
+                # layersFull=len(self.model.bert.encoder.layer)
+
+
+                bertLayer=nn.ModuleList([])
+                for i in self.hparams.layers:
+                    # print(i)
+                    # print(self.model.bert.encoder.layer[i])
+                    bertLayer.append(self.model.bert.encoder.layer[i])
+                self.model.bert.encoder.layer =bertLayer
+          else:
             BaseLongformer=Longformer(config=config)
-        
-        if len(self.hparams.layers)==0:
-            self.model = BaseLongformer.from_pretrained(self.hparams.checkpoint_path, config=config)
-        else:
-            
-            # 獲取原始模型的某些層
-            
-            self.model = BaseLongformer.from_pretrained(self.hparams.checkpoint_path, config=config)
-            # for layer in self.hparams.layers:
-            #     del self.model.bert.encoder.layer[layer]
-            # print(len(self.model.bert.encoder.layer))
-            # layersFull=len(self.model.bert.encoder.layer)
             
             
-            bertLayer=nn.ModuleList([])
-            for i in self.hparams.layers:
-                # print(i)
-                # print(self.model.bert.encoder.layer[i])
-                bertLayer.append(self.model.bert.encoder.layer[i])
-            self.model.bert.encoder.layer =bertLayer
+            if len(self.hparams.layers)==0:
+                self.model = BaseLongformer.from_pretrained(self.hparams.checkpoint_path, config=config)
+            else:
+
+                # 獲取原始模型的某些層
+
+                self.model = BaseLongformer.from_pretrained(self.hparams.checkpoint_path, config=config)
+                # for layer in self.hparams.layers:
+                #     del self.model.bert.encoder.layer[layer]
+                # print(len(self.model.bert.encoder.layer))
+                # layersFull=len(self.model.bert.encoder.layer)
+
+
+                bertLayer=nn.ModuleList([])
+                for i in self.hparams.layers:
+                    # print(i)
+                    # print(self.model.bert.encoder.layer[i])
+                    bertLayer.append(self.model.bert.encoder.layer[i])
+                self.model.encoder.layer =bertLayer
 
         # if self.hparams.cls:
         #     pass
