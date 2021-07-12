@@ -29,7 +29,7 @@ def read_requirements(filename):
 long_description=read_file("README.md")
 setup(
     name='longformer_chinese', #修改包名字-
-    version='0.0.0.8',
+    version='0.0.0.9',
     description='Terry toolkit longformer chinese',
     author='Terry Chan',
     author_email='napoler2008@gmail.com',
