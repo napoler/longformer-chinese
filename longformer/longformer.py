@@ -391,5 +391,8 @@ class LongformerEmbedding(pl.LightningModule):
         #     loss_fct = CrossEntropyLoss()
 
         #     loss = loss_fct(logits.view(-1, self.hparams.num_labels), labels.view(-1))
-
-        return output
+        if self.hparams.lm:
+            
+            return output.logits
+        else:
+            return output.last_hidden_state
